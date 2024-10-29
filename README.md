@@ -20,22 +20,36 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 
 	"github.com/Permify/sloggcp"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Load environment variables from .env file
+	if err := godotenv.Load(); err != nil {
+		fmt.Printf("Error loading .env file: %v\n", err)
+		os.Exit(1)
+	}
+
 	// Set up context and Google Cloud project ID
 	ctx := context.Background()
-	projectID := "YOUR_PROJECT_ID"
+	projectID := os.Getenv("GOOGLE_CLOUD_PROJECT")
+	if projectID == "" {
+		fmt.Println("GOOGLE_CLOUD_PROJECT environment variable is not set")
+		os.Exit(1)
+	}
 	logName := "my-application-log"
 
 	// Create a new GoogleCloudSlogHandler
-	handler, err := sloggcp.NewGoogleCloudSlogHandler(ctx, projectID, logName, slog.LevelInfo)
+	handler, err := sloggcp.NewGoogleCloudSlogHandler(ctx, projectID, logName, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})
 	if err != nil {
-		slog.Error("Failed to create Google Cloud slog handler", slog.String("error", err.Error()))
+		fmt.Printf("Failed to create Google Cloud slog handler: %v\n", err)
 		os.Exit(1)
 	}
 	defer handler.Close()
@@ -45,14 +59,14 @@ func main() {
 	slog.SetDefault(logger)
 
 	// Log messages at different levels
-	logger.Info("Application started", slog.String("env", "production"))
-	logger.Debug("Debugging info", slog.String("module", "auth"))
-	logger.Warn("Potential issue detected", slog.String("component", "database"))
-	logger.Error("An error occurred", slog.String("error", "database connection failed"))
+	logger.Info("Application started", "version", "1.0")
+	logger.Debug("Debugging info", "module", "auth")
+	logger.Warn("Potential issue detected", "component", "database")
+	logger.Error("An error occurred", "error", "database connection failed")
 
 	// Optional: Close the handler when done to ensure logs are flushed
 	if err := handler.Close(); err != nil {
-		slog.Error("Failed to close the Google Cloud slog handler", slog.String("error", err.Error()))
+		fmt.Printf("Failed to close the Google Cloud slog handler: %v\n", err)
 	}
 }
 ```
