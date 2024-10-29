@@ -25,7 +25,9 @@ func TestGoogleCloudSlogHandler(t *testing.T) {
 
 	// Initialize GoogleCloudSlogHandler
 	logName := "test-log"
-	handler := NewGoogleCloudSlogHandler(ctx, projectID, logName, slog.LevelInfo)
+	handler := NewGoogleCloudSlogHandler(ctx, projectID, logName, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})
 	defer handler.Close()
 
 	// Set the handler for slog
@@ -33,6 +35,7 @@ func TestGoogleCloudSlogHandler(t *testing.T) {
 
 	// Example log entries
 	slog.Info("Starting application", "version", "1.0")
+	slog.Debug("Debug", "debug", "sample debug")
 	slog.Warn("This is a warning message", "component", "main")
 	slog.Error("An error occurred", "error", "sample error")
 

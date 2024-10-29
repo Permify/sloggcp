@@ -29,7 +29,7 @@ import (
 type GoogleCloudSlogHandler struct {
 	logger      *logging.Logger
 	client      *logging.Client
-	level       slog.Leveler
+	opts        *slog.HandlerOptions
 	groupPrefix string
 	attrs       []slog.Attr
 }
@@ -37,7 +37,7 @@ type GoogleCloudSlogHandler struct {
 var _ slog.Handler = &GoogleCloudSlogHandler{}
 
 // NewGoogleCloudSlogHandler initializes a new GoogleCloudSlogHandler.
-func NewGoogleCloudSlogHandler(ctx context.Context, projectID, logName string, level slog.Level) *GoogleCloudSlogHandler {
+func NewGoogleCloudSlogHandler(ctx context.Context, projectID, logName string, opts *slog.HandlerOptions) *GoogleCloudSlogHandler {
 	client, err := logging.NewClient(ctx, projectID)
 	if err != nil {
 		return nil
@@ -45,14 +45,14 @@ func NewGoogleCloudSlogHandler(ctx context.Context, projectID, logName string, l
 	return &GoogleCloudSlogHandler{
 		client: client,
 		logger: client.Logger(logName),
-		level:  level,
+		opts:   opts,
 	}
 }
 
 func (h *GoogleCloudSlogHandler) Enabled(ctx context.Context, level slog.Level) bool {
 	minLevel := slog.LevelInfo
-	if h.level != nil {
-		minLevel = h.level.Level()
+	if h.opts.Level != nil {
+		minLevel = h.opts.Level.Level()
 	}
 	return level >= minLevel
 }
@@ -88,6 +88,38 @@ func (h *GoogleCloudSlogHandler) Handle(ctx context.Context, r slog.Record) erro
 	return nil
 }
 
+func (h *GoogleCloudSlogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	for i, attr := range attrs {
+		attrs[i] = withGroupPrefix(h.groupPrefix, attr)
+	}
+
+	return &GoogleCloudSlogHandler{
+		client:      h.client,
+		logger:      h.logger,
+		opts:        h.opts,
+		groupPrefix: h.groupPrefix,
+		attrs:       append(h.attrs, attrs...),
+	}
+}
+
+func (h *GoogleCloudSlogHandler) WithGroup(name string) slog.Handler {
+	if name == "" {
+		return h
+	}
+	prefix := name + "."
+	if h.groupPrefix != "" {
+		prefix = h.groupPrefix + prefix
+	}
+
+	return &GoogleCloudSlogHandler{
+		client:      h.client,
+		logger:      h.logger,
+		opts:        h.opts,
+		attrs:       h.attrs,
+		groupPrefix: prefix,
+	}
+}
+
 // mapSeverity converts slog.Level to Google Cloud Logging's Severity.
 func (h *GoogleCloudSlogHandler) mapSeverity(level slog.Level) logging.Severity {
 	switch level {
@@ -113,36 +145,6 @@ func (h *GoogleCloudSlogHandler) formatAttrValue(value interface{}) interface{} 
 		return v.Error()
 	default:
 		return fmt.Sprintf("%v", v) // Fallback for unsupported types
-	}
-}
-
-func (h *GoogleCloudSlogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	for i, attr := range attrs {
-		attrs[i] = withGroupPrefix(h.groupPrefix, attr)
-	}
-
-	return &GoogleCloudSlogHandler{
-		logger:      h.logger,
-		level:       h.level,
-		groupPrefix: h.groupPrefix,
-		attrs:       append(h.attrs, attrs...),
-	}
-}
-
-func (h *GoogleCloudSlogHandler) WithGroup(name string) slog.Handler {
-	if name == "" {
-		return h
-	}
-	prefix := name + "."
-	if h.groupPrefix != "" {
-		prefix = h.groupPrefix + prefix
-	}
-
-	return &GoogleCloudSlogHandler{
-		logger:      h.logger,
-		level:       h.level,
-		attrs:       h.attrs,
-		groupPrefix: prefix,
 	}
 }
 
