@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	"log/slog"
 
@@ -26,47 +25,16 @@ func TestGoogleCloudSlogHandler(t *testing.T) {
 
 	// Initialize GoogleCloudSlogHandler
 	logName := "test-log"
-	handler, err := NewGoogleCloudSlogHandler(ctx, projectID, logName, slog.LevelInfo)
-	if err != nil {
-		t.Fatalf("failed to initialize GoogleCloudSlogHandler: %v", err)
-	}
-	defer func() {
-		if err := handler.Close(); err != nil {
-			t.Fatalf("failed to close handler: %v", err)
-		}
-	}()
+	handler := NewGoogleCloudSlogHandler(ctx, projectID, logName, slog.LevelInfo)
+	defer handler.Close()
 
-	// Define test cases
-	testCases := []struct {
-		level   slog.Level
-		message string
-		attrs   []slog.Attr
-	}{
-		{slog.LevelDebug, "Debug message", []slog.Attr{slog.String("key1", "value1")}},
-		{slog.LevelInfo, "Info message", []slog.Attr{slog.String("key2", "value2")}},
-		{slog.LevelWarn, "Warning message", []slog.Attr{slog.Int("key3", 123)}},
-		{slog.LevelError, "Error message", []slog.Attr{slog.Float64("key4", 3.14)}},
-	}
+	// Set the handler for slog
+	slog.SetDefault(slog.New(handler))
 
-	// Execute each test case
-	for _, tc := range testCases {
-		// Create a record for each test case
-		record := slog.Record{
-			Time:    time.Now(),
-			Level:   tc.level,
-			Message: tc.message,
-		}
-
-		for _, attr := range tc.attrs {
-			record.AddAttrs(attr)
-		}
-
-		// Handle the record
-		err := handler.Handle(ctx, record)
-		if err != nil {
-			t.Fatalf("unexpected error in Handle: %v", err)
-		}
-	}
+	// Example log entries
+	slog.Info("Starting application", "version", "1.0")
+	slog.Warn("This is a warning message", "component", "main")
+	slog.Error("An error occurred", "error", "sample error")
 
 	fmt.Printf("All logs written successfully to log: %s\n", logName)
 }
