@@ -59,10 +59,10 @@ func main() {
 	slog.SetDefault(logger)
 
 	// Log messages at different levels
-	logger.Info("Application started", "version", "1.0")
-	logger.Debug("Debugging info", "module", "auth")
-	logger.Warn("Potential issue detected", "component", "database")
-	logger.Error("An error occurred", "error", "database connection failed")
+	slog.Info("Application started", "version", "1.0")
+	slog.Debug("Debugging info", "module", "auth")
+	slog.Warn("Potential issue detected", "component", "database")
+	slog.Error("An error occurred", "error", "database connection failed")
 
 	// Optional: Close the handler when done to ensure logs are flushed
 	if err := handler.Close(); err != nil {
